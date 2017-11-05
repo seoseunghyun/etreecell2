@@ -1,39 +1,74 @@
 (function() {
     var etreecell = function(canvasId) {
-        Log('Initialize etreecell canvas.');
+        Log('[INIT] Initialize etreecell canvas.');
         this.canvasDom = document.getElementById(canvasId);
-        this.cellArr = [];
-        this.linkArr = [];
+        this.canvasSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+        this.attr = {};
+        this.cells = {};
+        this.links = {};
         this.defaultAttr = {
-            cell: [],
-            link: []
+            cell: {},
+            link: {}
         }
-        this.historyStack = [];
+        this.historyStack = {
+            undo: [],
+            redo: []
+        }
+
+        Log('[INIT] Create & Append SVG Object');
+        this.canvasSVG.setAttribute('width', '100%');
+        this.canvasSVG.setAttribute('height', '100%');
+        this.canvasSVG.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
+        this.canvasDom.appendChild(this.canvasSVG);
     }
 
-    var cell = function(cellId, cellAttr) {
-        Log('Initialize Cell.');
+    etreecell.prototype = {
+        createCell: function(cellId, cellAttr) {
+            Log('[ETCL/CREATE] Create Cell.');
+            this.cells[cellId] = new cell(this, cellId, cellAttr || []);
+        },
+        createLink: function(linkFromCellId, linkToCellId, linkId, linkAttr) {
+            Log('[ETCL/CREATE] Create Link.');
+            this.links[linkId] = new link(this, linkFromCellId, linkToCellId, linkId, linkAttr || []);
+        },
+        getCellById: function(cellId) {
+            Log('[ETCL/GET] Get cell id : ' + cellId);
+            return this.cells[cellId] || false;
+        },
+        getLinkById: function(linkId) {
+            Log('[ETCL/GET] Get link id : ' + linkId);
+            return this.links[linkId] || false;
+        }
     }
 
-    var link = function(linkFromCellId, linkToCellId, linkId, linkAttr) {
-        Log('Initialize Link.');
+    var cell = function(etcl, cellId, cellAttr) {
+        Log('[CELL] Initialize Cell : ' + cellId);
+        this.id = cellId;
+        this.etcl = etcl;
+        this.attr = cellAttr;
+    }
+
+    cell.prototype = {
+
+    }
+
+    var link = function(etcl, linkFromCellId, linkToCellId, linkId, linkAttr) {
+        Log('[LINK] Initialize Link.' + linkId);
+        this.id = linkId;
+        this.etcl = etcl;
+        this.fromCellId = linkFromCellId;
+        this.toCellId = linkToCellId;
+    }
+
+    link.prototype = {
+
     }
 
     var Log = function(printTxt) {
         var print = true;
         if (print) {
             console.log('ETREECELL LOG :: ', printTxt)
-        }
-    }
-
-    etreecell.prototype = {
-        createCell: function(cellId, cellAttr) {
-            Log('Create Cell.');
-            this.cellArr.push(new cell(cellId, cellAttr));
-        },
-        createLink: function(linkFromCellId, linkToCellId, linkId, linkAttr) {
-            Log('Create Link.');
-            this.linkArr.push(new link(linkFromCellId, linkToCellId, linkId, linkAttr));
         }
     }
 
