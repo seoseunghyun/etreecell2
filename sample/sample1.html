@@ -3,13 +3,29 @@
 <head>
     <title>Sample 1</title>
     <script type="text/javascript" src="../js/etcl.js"></script>
+    <script type="text/javascript" src="../js/etclTypes.js"></script>
 </head>
 
 <body>
-    <div id="canvas" style="width: 100%; height: 100%;"></div>
+    <div id="canvas" style="width: 200%; height: 200%;"></div>
     <script type="text/javascript">
         var e = new etcl('canvas');
-        e.createCell();
+        var cell1 = e.createCell();
+        var cell2 = e.createCell();
+        cell1.setAttr({
+            x: 300,
+            y: 50
+        });
+
+
+        cell2
+            .setAttr({
+                x: 10,
+                y: 50
+            })
+            .linkTo(cell1);
+
+        window.e = e;
     </script>
 </body>
 
