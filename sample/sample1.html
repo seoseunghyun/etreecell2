@@ -16,13 +16,11 @@
             x: 300,
             y: 50
         });
-
-
-        cell2
-            .setAttr({
+        cell2.setAttr({
                 x: 10,
-                y: 50
+                y: 200
             })
+            .linkTo(cell1)
             .linkTo(cell1);
 
         window.e = e;

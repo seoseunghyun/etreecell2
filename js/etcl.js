@@ -10,18 +10,11 @@
         this.canvasSVG.etcl = this;
 
         // Datas
-        this.attr = {};
+        this.saveValues = ["cells", "links", "defaultAttr"];
+
         this.cells = {};
         this.links = {};
         this.cellTyper = cellTyper;
-        this.helper = {
-            output: [],
-            input: []
-        };
-        this.selected = {
-            cell: [],
-            link: []
-        };
         this.defaultAttr = {
             cell: {
                 "x": 10,
@@ -37,12 +30,26 @@
                 "pointer-events": "visible",
                 "cursor": "pointer"
             },
-            link: {}
+            link: {
+                "stroke": "black",
+                "stroke-width": 2,
+                "fill": "none"
+            }
         }
         this.historyStack = {
             undo: [],
             redo: []
         }
+
+
+        this.helper = {
+            output: [],
+            input: []
+        };
+        this.selected = {
+            cell: [],
+            link: []
+        };
 
         Log('INIT', 'Create & Append SVG Object');
         this.canvasSVG.setAttribute('width', '100%');
@@ -56,13 +63,18 @@
     etreecell.prototype = {
         createCell: function(cellId, cellAttr, cellType) {
             Log('ETCL', 'Create Cell.');
-            this.cells[cellId] = new cell(this, cellId || guid(), cellAttr || [], cellType || "textbox");
-            return this.cells[cellId];
+            var uniqId = guid();
+            var _cell = this.cells[cellId || uniqId] = new cell(this, cellId || uniqId, cellAttr || [], cellType || "textbox");
+            return _cell;
         },
-        createLink: function(inputCell, outputCell, linkId, linkAttr) {
+        createLink: function(outputCell, inputCell, linkAttr) {
             Log('ETCL', 'Create Link.');
-            this.links[linkId] = new link(this, inputCell, outputCell, linkId || guid(), linkAttr || []);
-            return this.links[linkId];
+            if (!!this.links[outputCell.id + "_" + inputCell.id]) {
+                Log("ETCL", "This is existed links.");
+                return false;
+            }
+            var _link = this.links[outputCell.id + "_" + inputCell.id] = new link(this, outputCell, inputCell, outputCell + "_" + inputCell, linkAttr || []);
+            return _link;
         },
         getCellById: function(cellId) {
             Log('ETCL', 'Get cell id : ' + cellId);
@@ -100,6 +112,14 @@
                                 x: _cell._originPos.x + e.clientX - this.etcl._originPos.x,
                                 y: _cell._originPos.y + e.clientY - this.etcl._originPos.y
                             })
+                            var outputLinks = _cell.getLinksByOutput();
+                            for (var j in outputLinks) {
+                                outputLinks[j].updateLine();
+                            }
+                            var inputLinks = _cell.getLinksByInput();
+                            for (var j in inputLinks) {
+                                inputLinks[j].updateLine();
+                            }
                         }
                     }
                 })
@@ -115,6 +135,17 @@
             if (!!linkableBool) {
 
             }
+        },
+        exportToJson: function() {
+            /*
+            var exportData = {};
+            for (var i in this.saveValues) {
+                exportData[this.saveValues[i]] = this[this.saveValues[i]];
+                console.log(this[this.saveValues[i]]);
+            }
+            console.log(exportData);
+            return JSON.stringify(exportData);
+            */
         }
     }
 
@@ -153,6 +184,7 @@
             this.setAttr(this.attr);
             this.etcl.canvasSVG.appendChild(this.cellSVG);
             this.cellSVG.cell = this;
+            this.cellSVG.etcl = this.etcl;
             return this.cellSVG;
         },
         draggable: function(draggableBool) {
@@ -176,6 +208,21 @@
         getAttr: function(attr) {
             return this.attr[attr] || false;
         },
+        getLinksByOutput: function() {
+            var links = [];
+            for (var i in this.io.output) {
+                links.push(this.etcl.getLinkById(this.io.output[i].id + "_" + this.id));
+            }
+            return links;
+        },
+
+        getLinksByInput: function() {
+            var links = [];
+            for (var i in this.io.input) {
+                links.push(this.etcl.getLinkById(this.id + "_" + this.io.input[i].id));
+            }
+            return links;
+        },
         setAttr: function(attr) {
             Log("CELL", "Set the cell style.");
             var _svgAttr = ["id", "d", "x", "y", "width", "height", "stroke", "fill", "stroke-width", "rx", "ry", "pointer-events"];
@@ -196,23 +243,27 @@
         addEvent: function(type, func) {
             this.eventList[type].push(func);
         },
-        linkTo: function(linkCell, linkId, linkAttr) {
-            Log("LINK TO", this.id + " to " + linkCell.id);
-            var newLink = new link(this.etcl, linkCell, linkId || guid(), linkAttr || []);
-        },
-        linkFrom: function(linkCell) {}
+        linkTo: function(linkCell, linkAttr) {
+            Log("LINK", "Link to " + linkCell.id);
+            this.etcl.createLink(this, linkCell, linkAttr || []);
+            return this;
+        }
     }
 
-    var link = function(etcl, inputCell, outputCell, linkId, linkAttr) {
+    var link = function(etcl, outputCell, inputCell, linkId, linkAttr) {
         Log('LINK', 'Initialize Link.' + linkId);
         this.id = linkId;
         this.etcl = etcl;
         this.attr = {};
         this.linkSVG = null;
         this.io = {
-            input: inputCell,
-            output: outputCell
+            output: outputCell,
+            input: inputCell
         }
+        outputCell.io.input.push(inputCell);
+        inputCell.io.output.push(outputCell);
+
+
 
         for (var i in etcl.defaultAttr.link) {
             this.attr[i] = etcl.defaultAttr.link[i];
@@ -228,16 +279,159 @@
             this.setAttr(this.attr);
             this.etcl.canvasSVG.appendChild(this.linkSVG);
             this.linkSVG.link = this;
+            this.linkSVG.etcl = this.etcl;
+            this.updateLine();
             return this.linkSVG;
         },
-        drawLine: function(x1, y1, width1, height1, x2, y2, width2, height2) {
-            Log("LINK", "draw line of link");
+        updateLine: function() {
+            this.drawLine(this.io.output.getAttr('x'), this.io.output.getAttr('y'), this.io.output.getAttr('width'), this.io.output.getAttr('height'), this.io.output.getAttr('stroke-width'),
+                this.io.input.getAttr('x'), this.io.input.getAttr('y'), this.io.input.getAttr('width'), this.io.input.getAttr('height'), this.io.input.getAttr('stroke-width'));
         },
-        setAttr: function() {
+        drawLine: function(x1, y1, width1, height1, margin1, x2, y2, width2, height2, margin2) {
+            Log("LINK", "draw line of link");
 
+            var path = [{ x: x1 + width1 / 2, y: y1 - margin1 / 2 },
+                { x: x1 + width1 / 2, y: y1 + height1 + margin1 / 2 },
+                { x: x1 - margin1 / 2, y: y1 + height1 / 2 },
+                { x: x1 + width1 + margin1 / 2, y: y1 + height1 / 2 },
+                { x: x2 + width2 / 2, y: y2 - margin2 / 2 },
+                { x: x2 + width2 / 2, y: y2 + height2 + margin2 / 2 },
+                { x: x2 - margin2 / 2, y: y2 + height2 / 2 },
+                { x: x2 + width2 + margin2 / 2, y: y2 + height2 / 2 }
+            ];
+
+            var d = {},
+                distance = [];
+            for (var i = 0; i < 4; i++) {
+                for (var j = 4; j < 8; j++) {
+                    var dx = Math.abs(path[i].x - path[j].x),
+                        dy = Math.abs(path[i].y - path[j].y);
+                    if ((i == j - 4) || (((i != 3 && j != 6) || path[i].x < path[j].x) && ((i != 2 && j != 7) || path[i].x > path[j].x) && ((i != 0 && j != 5) || path[i].y > path[j].y) && ((i != 1 && j != 4) || path[i].y < path[j].y))) {
+                        distance.push(dx + dy);
+                        d[distance[distance.length - 1]] = [i, j];
+                    }
+                }
+            }
+            var fixPoint, autoPoint;
+            if (distance.length == 0) {
+                fixPoint = [0, 4];
+            } else {
+                fixPoint = d[Math.min.apply(Math, distance)];
+
+            }
+            /*
+            if (!!_fixPoint_) {
+                //시계방향 4분면과 이 함수에서의 4분면의 호환을 위한 파싱 함수.
+                var parsePosit = function(__x_) {
+                    var __parseX;
+                    switch (__x_) {
+                        case 0:
+                            __parseX = 0;
+                            break;
+                        case 1:
+                            __parseX = 3;
+                            break;
+                        case 2:
+                            __parseX = 1;
+                            break;
+                        case 3:
+                            __parseX = 2;
+                            break;
+                        default:
+                            break;
+                    }
+                    return __parseX;
+                }
+                var unparsePosit = function(__x_) {
+                    var __parseX;
+                    switch (__x_) {
+                        case 0:
+                            __parseX = 2;
+                            break;
+                        case 1:
+                            __parseX = 0;
+                            break;
+                        case 2:
+                            __parseX = 1;
+                            break;
+                        case 3:
+                            __parseX = 3;
+                            break;
+                        default:
+                            break;
+                    }
+                    return __parseX;
+                }
+                var marginPosit = function(__x_) {
+                    var __parseX;
+                    switch (__x_) {
+                        case 0:
+                            __parseX = -4;
+                            break;
+                        case 1:
+                            __parseX = 4;
+                            break;
+                        case 2:
+                            __parseX = 0;
+                            break;
+                        case 3:
+                            __parseX = 0;
+                            break;
+                        default:
+                            break;
+                    }
+                    return __parseX;
+                }
+
+                if (_fixPoint_[0] != 'auto') {
+                    fixPoint[0] = parsePosit(_fixPoint_[0]);
+                }
+                if (_fixPoint_[1] != 'auto') {
+                    fixPoint[1] = parsePosit(_fixPoint_[1]) + 4;
+                }
+                if (ETCL_STATUS['movingLinker'] != 0) {
+                    var _linker = ETCL_CONTENTS['cell'][ETCL_STATUS['movingLinker'][0]]['linker'][ETCL_STATUS['movingLinker'][1]];
+                    _linker.transform('t0 ' + marginPosit(fixPoint[1] - 4) + 'r' + unparsePosit(fixPoint[1] - 4) * 90);
+
+                }
+            }
+            */
+            var x1 = path[fixPoint[0]].x,
+                y1 = path[fixPoint[0]].y,
+                x4 = path[fixPoint[1]].x,
+                y4 = path[fixPoint[1]].y;
+
+            dx = Math.max(Math.abs(x1 - x4) / 2, 10);
+            dy = Math.max(Math.abs(y1 - y4) / 2, 10);
+            var x2 = [x1, x1, x1 - dx, x1 + dx][fixPoint[0]].toFixed(3),
+                y2 = [y1 - dy, y1 + dy, y1, y1][fixPoint[0]].toFixed(3),
+                x3 = [0, 0, 0, 0, x4, x4, x4 - dx, x4 + dx][fixPoint[1]].toFixed(3),
+                y3 = [0, 0, 0, 0, y1 + dy, y1 - dy, y4, y4][fixPoint[1]].toFixed(3);
+            this.linkSVG.setAttributeNS(null, "d", ['M', x1.toFixed(3), y1.toFixed(3), 'C', x2, y2, x3, y3, x4.toFixed(3), y4.toFixed(3)].join(' ').toString());
+            return this;
+        },
+        addEvent: function(type, func) {
+            this.eventList[type].push(func);
+        },
+        setAttr: function(attr) {
+            Log("LINK", "Set the link style.");
+            var _svgAttr = ["id", "d", "x", "y", "width", "height", "stroke", "fill", "stroke-width", "rx", "ry", "pointer-events"];
+            var _cssAttr = ["cursor"];
+            if (typeof attr == "object") {
+                for (var i in attr) {
+                    if (_svgAttr.indexOf(i) !== -1) {
+                        this.linkSVG.setAttributeNS(null, i, attr[i]);
+                        this.attr[i] = attr[i];
+                    } else if (_cssAttr.indexOf(i) !== -1) {
+                        this.linkSVG.style[i] = attr[i];
+                        this.attr[i] = attr[i];
+                    }
+                }
+            }
+            return this;
         },
         getAttr: function() {
-
+            return this.attr[attr] || false;
         }
     }
 
