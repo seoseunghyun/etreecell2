@@ -61,6 +61,9 @@
                     "cursor": "nw-resize",
                     "fill": "rgba(0,0,0,.2)",
                     "etcl-d": "M 10 10 L 0 10 L 10 0 Z"
+                },
+                linker: {
+
                 }
             },
             link: {
@@ -72,7 +75,7 @@
             },
             helper: {
                 css: {
-                    selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
+                    selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:orange; opacity:1; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
                     resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}'
                 }
             }
@@ -82,21 +85,17 @@
             redo: []
         }
 
-        this.helper = {
-            output: [],
-            input: []
-        };
         this.selected = {
             cell: [],
             link: []
         };
+        this.editing = {
+            cell: null,
+            link: null
+        };
 
-        Log('INIT', 'Create & Append SVG Object');
-        this.svg.canvas.setAttribute('width', '100%');
-        this.svg.canvas.setAttribute('height', '100%');
-        this.svg.canvas.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
-        this.dom.canvas.appendChild(this.svg.canvas);
-        this.initEvent(true);
+        Log('INIT', 'Etreecell');
+        this.draw();
         this.creatable(true);
         this.svg.canvas.etcl = this;
 
@@ -138,23 +137,26 @@
             document.getElementsByTagName('head')[0].appendChild(style);
         },
         creatable: function(creatableBool) {
-            if (!!creatableBool) {
-                this.svg.canvas.addEventListener("dblclick", function(e) {
-                    if (!this.etcl._draggingMove && !this._draggingSelect) {
-                        this.etcl.createCell(null, { x: e.clientX - this.etcl.defaultAttr.cell.cell.width / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"], y: e.clientY - this.etcl.defaultAttr.cell.cell.height / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"] });
-                    }
-                });
-            }
+            if (!!creatableBool) {}
         },
-        initEvent: function(draggableBool) {
+        draw: function() {
             this._draggingMove = false;
             this._draggingSelect = false;
             this._resizeMove = false;
 
+            this.svg.canvas.setAttribute('width', '100%');
+            this.svg.canvas.setAttribute('height', '100%');
+            this.svg.canvas.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
+            this.dom.canvas.appendChild(this.svg.canvas);
+            this.svg.canvas.addEventListener("dblclick", function(e) {
+                if (!this.etcl._draggingMove && !this._draggingSelect) {
+                    this.etcl.createCell(null, { x: e.clientX - this.etcl.defaultAttr.cell.cell.width / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"], y: e.clientY - this.etcl.defaultAttr.cell.cell.height / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"] });
+                }
+            });
             this.svg.canvas.addEventListener("mousedown", function(e) {
                 Log("ETCL", "mousedown");
                 if (this.etcl.selected.cell.length == 0) {
-                    // TODO;
+
                 }
                 this.etcl._originPos = {
                     x: e.clientX,
@@ -169,6 +171,10 @@
                         width: _cell.getAttr('width'),
                         height: _cell.getAttr('height')
                     }
+                    _cell.setAttr({
+                        x: _cell._originPos.x,
+                        y: _cell._originPos.y
+                    });
                 }
             })
             this.svg.canvas.addEventListener("mousemove", function(e) {
@@ -264,6 +270,12 @@
             for (var i in this.selected.cell) {
                 this.selected.cell[i].removeClass("selected");
             }
+
+            if (!!this.editing.cell) {
+                if (this.editing.cell != cell) {
+                    this.editing.cell.editCancel();
+                }
+            }
             this.selected.cell.splice(0, this.selected.cell.length);
             if (!cell) {
                 return this;
@@ -278,6 +290,31 @@
                 cell.addClass("selected");
             }
             return this;
+        },
+        editStartCell: function(cell) {
+            cell.addClass("editing");
+
+            this.selectCell(cell);
+            this.editing.cell = cell;
+            //cell._tmpData = JSON.parse(JSON.stringify(cell.data));
+        },
+        editSaveCell: function(cell, newData) {
+            cell.removeClass("editing");
+            this.editing.cell = null;
+            if (!!newData) {
+                updateDataCell(this.updateDataCell(newData));
+            }
+            // delete(cell._tmpData);
+        },
+        editCancelCell: function(cell) {
+            cell.removeClass("editing");
+            console.log("A");
+            this.editing.cell = null;
+            //delete(cell._tmpData);
+        },
+        updateDataCell: function(cell, newData) {
+            //delete(cell.data);
+            //cell.data = newData || _tmpData;
         }
     }
 
@@ -316,6 +353,8 @@
         for (var i in cellAttr) {
             this.attr[i] = cellAttr[i];
         }
+
+
         this.draw();
         this.draggable(this.attr["draggable"] || true);
 
@@ -342,10 +381,16 @@
                 Log("CELL", "Click");
                 e.stopPropagation();
             });
+            this.svg.cell.addEventListener("dblclick", function(e) {
+                Log("CELL", "DBLClick");
+                e.stopPropagation();
+                this.cell.editStart();
+            });
 
             // Selector
             this.svg.selected = document.createElementNS(_svgUrl, "rect");
             this.svg.selected.setAttributeNS(null, "id", "selected_" + this.id);
+            this.svg.selected.setAttributeNS(null, "etcl-cell-id", this.id);
             this.svg.selected.setAttributeNS(null, "class", "selector");
             for (var i in this.etcl.defaultAttr.cell.selected) {
                 this.svg.selected.setAttributeNS(null, i, this.etcl.defaultAttr.cell.selected[i]);
@@ -356,9 +401,16 @@
             // Resize 
             this.svg.resize = document.createElementNS(_svgUrl, "path");
             this.svg.resize.setAttributeNS(null, "id", "resize_" + this.id);
+            this.svg.resize.setAttributeNS(null, "etcl-cell-id", this.id);
             this.svg.resize.setAttributeNS(null, "class", "resize");
             this.svg.resize.cell = this;
             this.svg.resize.etcl = this.etcl;
+
+            this.svg.linker = {
+
+                top: document.createElementNS(_svgUrl, "circle"),
+            }
+
 
             for (var i in this.etcl.defaultAttr.cell.resize) {
                 this.svg.resize.setAttributeNS(null, i, this.etcl.defaultAttr.cell.resize[i]);
@@ -409,6 +461,18 @@
         select: function() {
             this.etcl.selectCell(this);
         },
+        editStart: function() {
+            this.etcl.editStartCell(this);
+            return this;
+        },
+        editCancel: function() {
+            this.etcl.editCancelCell(this);
+            return this;
+        },
+        editSave: function() {
+            this.etcl.editSaveCell(this);
+            return this;
+        },
         getAttr: function(attr) {
             return this.attr[attr] || false;
         },
@@ -442,13 +506,13 @@
             }
 
             if (float.indexOf("left") !== -1) {
-                values.x = (moveType == "x" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-left") || 0);
+                values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(object.getAttribute("etcl-margin-left") || 0);
             }
             if (float.indexOf("right") !== -1) {
                 values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(this.getAttr("width")) - parseInt(object.getAttribute("width") || 0) - parseInt(object.getAttribute("etcl-margin-right") || 0);
             }
             if (float.indexOf("top") !== -1) {
-                values.y = (moveType == "y" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-top") || 0);
+                values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(object.getAttribute("etcl-margin-top") || 0);
             }
             if (float.indexOf("bottom") !== -1) {
                 values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(this.getAttr("height")) - parseInt(object.getAttribute("height") || 0) - parseInt(object.getAttribute("etcl-margin-bottom") || 0);
@@ -486,9 +550,10 @@
                     if (_svgAttr.indexOf(i) !== -1) {
                         this.svg.cell.setAttributeNS(null, i, attr[i]);
                         this.attr[i] = attr[i];
+
                         if (i == "x" || i == "y" || i == "width" || i == "height") {
-                            this.moveFit(this.svg.selected, attr[i], i);
                             this.moveFit(this.svg.resize, attr[i], i);
+                            this.moveFit(this.svg.selected, attr[i], i);
                         }
 
                     } else if (_cssAttr.indexOf(i) !== -1) {
