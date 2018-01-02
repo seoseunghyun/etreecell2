@@ -38,6 +38,8 @@
                     "cursor": "pointer"
                 },
                 selected: {
+                    "x": 0,
+                    "y": 0,
                     "etcl-margin-left": -12,
                     "etcl-margin-right": -12,
                     "etcl-margin-top": -12,
@@ -63,7 +65,28 @@
                     "etcl-d": "M 10 10 L 0 10 L 10 0 Z"
                 },
                 linker: {
-
+                    "common": {
+                        "fill": "rgba(0,0,0,.4)",
+                        "cx": 6,
+                        "cy": 6,
+                        "r": 4,
+                        "etcl-margin-right": -5,
+                        "etcl-margin-top": -5,
+                        "etcl-margin-bottom": -5,
+                        "etcl-margin-left": -5
+                    },
+                    "top": {
+                        "etcl-float": "x-center,top"
+                    },
+                    "right": {
+                        "etcl-float": "y-center,right"
+                    },
+                    "bottom": {
+                        "etcl-float": "x-center,bottom"
+                    },
+                    "left": {
+                        "etcl-float": "y-center,left"
+                    }
                 }
             },
             link: {
@@ -76,7 +99,8 @@
             helper: {
                 css: {
                     selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:orange; opacity:1; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
-                    resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}'
+                    resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}',
+                    linker: '.linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .linker.send {opacity:1; fill:#3695dd; transition: opacity,fill .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);  }',
                 }
             }
         }
@@ -171,6 +195,7 @@
                         width: _cell.getAttr('width'),
                         height: _cell.getAttr('height')
                     }
+
                     _cell.setAttr({
                         x: _cell._originPos.x,
                         y: _cell._originPos.y
@@ -333,7 +358,13 @@
         this.svg = {
             cell: null,
             selected: null,
-            resize: null
+            resize: null,
+            linker: {
+                top: null,
+                right: null,
+                bottom: null,
+                left: null
+            }
         }
         this.fit = {
             drag: [],
@@ -374,6 +405,16 @@
                 this.cell.select();
             });
             this.svg.cell.addEventListener("mousemove", function(e) {});
+            this.svg.cell.addEventListener("mouseenter", function(e) {
+                for (var i in this.cell.svg.linker) {
+                    addClass(this.cell.svg.linker[i], 'show');
+                }
+            });
+            this.svg.cell.addEventListener("mouseleave", function(e) {
+                for (var i in this.cell.svg.linker) {
+                    removeClass(this.cell.svg.linker[i], 'show');
+                }
+            });
             this.svg.cell.addEventListener("mouseup", function(e) {
                 this.etcl._draggingMove = false;
             });
@@ -407,8 +448,39 @@
             this.svg.resize.etcl = this.etcl;
 
             this.svg.linker = {
-
                 top: document.createElementNS(_svgUrl, "circle"),
+                right: document.createElementNS(_svgUrl, "circle"),
+                bottom: document.createElementNS(_svgUrl, "circle"),
+                left: document.createElementNS(_svgUrl, "circle"),
+            }
+
+            for (var i in this.svg.linker) {
+                var _svgLinker = this.svg.linker[i];
+                _svgLinker.setAttributeNS(null, "id", "linker_" + i + "_" + this.id);
+                _svgLinker.setAttributeNS(null, "etcl-cell-id", this.id);
+                _svgLinker.setAttributeNS(null, "class", "linker");
+                _svgLinker.cell = this;
+                _svgLinker.etcl = this.etcl;
+                for (var j in this.etcl.defaultAttr.cell.linker.common) {
+                    _svgLinker.setAttributeNS(null, j, this.etcl.defaultAttr.cell.linker.common[j]);
+                }
+                for (var j in this.etcl.defaultAttr.cell.linker[i]) {
+                    _svgLinker.setAttributeNS(null, j, this.etcl.defaultAttr.cell.linker[i][j]);
+                }
+                _svgLinker.addEventListener("mouseenter", function(e) {
+                    for (var j in this.cell.svg.linker) {
+                        addClass(this.cell.svg.linker[j], 'show');
+                    }
+                })
+                _svgLinker.addEventListener("mouseleave", function(e) {
+                    for (var j in this.cell.svg.linker) {
+                        removeClass(this.cell.svg.linker[j], 'show');
+                    }
+                })
+
+                _svgLinker.addEventListener("mousedown", function(e) {
+                    // TODO
+                })
             }
 
 
@@ -427,6 +499,9 @@
 
             this.etcl.svg.canvas.appendChild(this.svg.selected);
             this.etcl.svg.canvas.appendChild(this.svg.resize);
+            for (var i in this.svg.linker) {
+                this.etcl.svg.canvas.appendChild(this.svg.linker[i]);
+            }
             this.etcl.svg.canvas.appendChild(this.svg.cell);
             this.setAttr(this.attr);
 
@@ -497,7 +572,7 @@
         moveFit: function(object, moveValue, moveType) {
             var value = 0;
             var float = (object.getAttribute("etcl-float") || "left,top").replace("/ /gi", "").split(",");
-
+            console.log(object.getAttribute("etcl-float"));
             var values = {
                 x: 0,
                 y: 0,
@@ -513,6 +588,12 @@
             }
             if (float.indexOf("top") !== -1) {
                 values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(object.getAttribute("etcl-margin-top") || 0);
+            }
+            if (float.indexOf("x-center") !== -1) {
+                values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(this.getAttr("width") / 2);
+            }
+            if (float.indexOf("y-center") !== -1) {
+                values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(this.getAttr("height") / 2);
             }
             if (float.indexOf("bottom") !== -1) {
                 values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(this.getAttr("height")) - parseInt(object.getAttribute("height") || 0) - parseInt(object.getAttribute("etcl-margin-bottom") || 0);
@@ -534,6 +615,10 @@
                 case "path":
                     movePath(object, values.x, values.y);
                     break;
+                case "circle":
+                    object.setAttributeNS(null, "cx", values.x);
+                    object.setAttributeNS(null, "cy", values.y);
+                    break;
                 default:
                     break;
             }
@@ -542,7 +627,7 @@
         },
         setAttr: function(attr) {
             Log("CELL", "Set the cell style.");
-            var _svgAttr = ["id", "d", "x", "y", "width", "height", "stroke", "fill", "stroke-width", "rx", "ry", "pointer-events"];
+            var _svgAttr = ["id", "d", "x", "y", "cx", "xy", "r", "width", "height", "stroke", "fill", "stroke-width", "rx", "ry", "pointer-events"];
             var _cssAttr = ["cursor"];
             if (typeof attr == "object") {
                 for (var i in attr) {
@@ -554,6 +639,10 @@
                         if (i == "x" || i == "y" || i == "width" || i == "height") {
                             this.moveFit(this.svg.resize, attr[i], i);
                             this.moveFit(this.svg.selected, attr[i], i);
+                            this.moveFit(this.svg.linker.top, attr[i], i);
+                            this.moveFit(this.svg.linker.right, attr[i], i);
+                            this.moveFit(this.svg.linker.bottom, attr[i], i);
+                            this.moveFit(this.svg.linker.left, attr[i], i);
                         }
 
                     } else if (_cssAttr.indexOf(i) !== -1) {
