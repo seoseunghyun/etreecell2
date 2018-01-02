@@ -1,3 +1,4 @@
+// Author : Seo SeungHyun (me@seunghyun.net).
 (function() {
     var _svgUrl = "http://www.w3.org/2000/svg";
     var _xmlnsUrl = "http://www.w3.org/2000/xmlns/";
@@ -5,42 +6,81 @@
 
     var etreecell = function(canvasId) {
         Log('INIT', 'Initialize etreecell canvas.');
-        this.canvasDom = document.getElementById(canvasId);
-        this.canvasSVG = document.createElementNS(_svgUrl, "svg");
-        this.canvasSVG.etcl = this;
+        this.dom = {
+            canvas: document.getElementById(canvasId)
+        }
+        this.svg = {
+            canvas: document.createElementNS(_svgUrl, "svg")
+        }
 
-        // Datas
-        this.saveValues = ["cells", "links", "defaultAttr"];
+        this.saveValues = {
+            etreecell: ["defaultAttr"],
+            cell: ["id", "type", "attr", "data"],
+            link: ["id", "attr", "io", "id", "data"]
+        };
 
-        this.cells = {};
-        this.links = {};
+        this.cell = {};
+        this.link = {};
         this.cellTyper = cellTyper;
         this.defaultAttr = {
             cell: {
-                "x": 10,
-                "y": 10,
-                "width": 120,
-                "height": 30,
-                "stroke": "black",
-                "fill": "none",
-                "stroke-width": 2,
-                "d": "M 5 5 L 50 50",
-                "rx": 10,
-                "ry": 10,
-                "pointer-events": "visible",
-                "cursor": "pointer"
+                cell: {
+                    "x": 20,
+                    "y": 10,
+                    "width": 120,
+                    "height": 30,
+                    "stroke": "black",
+                    "fill": "none",
+                    "stroke-width": 2,
+                    "rx": 10,
+                    "ry": 10,
+                    "pointer-events": "visible",
+                    "cursor": "pointer"
+                },
+                selected: {
+                    "etcl-margin-left": -12,
+                    "etcl-margin-right": -12,
+                    "etcl-margin-top": -12,
+                    "etcl-margin-bottom": -12,
+                    "width": 100,
+                    "height": 20,
+                    "etcl-float": "left,top,right,bottom",
+                    "stroke-dasharray": "3, 3",
+                    "stroke-width": 2,
+                    "stroke": "black",
+                    "rx": 7,
+                    "ry": 7,
+                    "fill": "none"
+                },
+                resize: {
+                    "etcl-margin-right": -7,
+                    "etcl-margin-bottom": -7,
+                    "etcl-float": "right,bottom",
+                    "width": 10,
+                    "height": 10,
+                    "cursor": "nw-resize",
+                    "fill": "rgba(0,0,0,.2)",
+                    "etcl-d": "M 10 10 L 0 10 L 10 0 Z"
+                }
             },
             link: {
-                "stroke": "black",
-                "stroke-width": 2,
-                "fill": "none"
+                line: {
+                    "stroke": "black",
+                    "stroke-width": 2,
+                    "fill": "none"
+                }
+            },
+            helper: {
+                css: {
+                    selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
+                    resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}'
+                }
             }
         }
         this.historyStack = {
             undo: [],
             redo: []
         }
-
 
         this.helper = {
             output: [],
@@ -52,109 +92,216 @@
         };
 
         Log('INIT', 'Create & Append SVG Object');
-        this.canvasSVG.setAttribute('width', '100%');
-        this.canvasSVG.setAttribute('height', '100%');
-        this.canvasSVG.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
-        this.canvasDom.appendChild(this.canvasSVG);
-        this.draggable(true);
-        this.linkable(true);
+        this.svg.canvas.setAttribute('width', '100%');
+        this.svg.canvas.setAttribute('height', '100%');
+        this.svg.canvas.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
+        this.dom.canvas.appendChild(this.svg.canvas);
+        this.initEvent(true);
+        this.creatable(true);
+        this.svg.canvas.etcl = this;
+
+        var _cssString = "";
+        for (var i in this.defaultAttr.helper.css) {
+            _cssString += this.defaultAttr.helper.css[i] + " ";
+        }
+        this.createCSS(_cssString);
     }
 
     etreecell.prototype = {
-        createCell: function(cellId, cellAttr, cellType) {
+        createCell: function(cellId, cellAttr, cellType, cellData) {
             Log('ETCL', 'Create Cell.');
             var uniqId = guid();
-            var _cell = this.cells[cellId || uniqId] = new cell(this, cellId || uniqId, cellAttr || [], cellType || "textbox");
+            var _cell = this.cell[cellId || uniqId] = new cell(this, cellId || uniqId, cellAttr || {}, cellType || "textbox", cellData || {});
             return _cell;
         },
-        createLink: function(outputCell, inputCell, linkAttr) {
+        createLink: function(outputCell, inputCell, linkAttr, linkData) {
             Log('ETCL', 'Create Link.');
-            if (!!this.links[outputCell.id + "_" + inputCell.id]) {
-                Log("ETCL", "This is existed links.");
+            if (!!this.link[outputCell.id + "_" + inputCell.id]) {
+                Log("ETCL", "This is existed link.");
                 return false;
             }
-            var _link = this.links[outputCell.id + "_" + inputCell.id] = new link(this, outputCell, inputCell, outputCell + "_" + inputCell, linkAttr || []);
+            var _link = this.link[outputCell.id + "_" + inputCell.id] = new link(this, outputCell, inputCell, outputCell.id + "_" + inputCell.id, linkAttr || {}, linkData || {});
             return _link;
         },
         getCellById: function(cellId) {
             Log('ETCL', 'Get cell id : ' + cellId);
-            return this.cells[cellId] || false;
+            return this.cell[cellId] || false;
         },
         getLinkById: function(linkId) {
             Log('ETCL', 'Get link id : ' + linkId);
-            return this.links[linkId] || false;
+            return this.link[linkId] || false;
         },
-        draggable: function(draggableBool) {
+        createCSS: function(cssContext) {
+            var style = document.createElement('style');
+            style.type = 'text/css';
+            style.innerHTML = cssContext;
+            document.getElementsByTagName('head')[0].appendChild(style);
+        },
+        creatable: function(creatableBool) {
+            if (!!creatableBool) {
+                this.svg.canvas.addEventListener("dblclick", function(e) {
+                    if (!this.etcl._draggingMove && !this._draggingSelect) {
+                        this.etcl.createCell(null, { x: e.clientX - this.etcl.defaultAttr.cell.cell.width / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"], y: e.clientY - this.etcl.defaultAttr.cell.cell.height / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"] });
+                    }
+                });
+            }
+        },
+        initEvent: function(draggableBool) {
             this._draggingMove = false;
             this._draggingSelect = false;
-            if (!!draggableBool) {
-                this.canvasSVG.addEventListener("mousedown", function(e) {
-                    if (this.etcl.selected.cell.length == 0) {
-                        this.etcl._draggingMove = true;
-                    }
-                    this.etcl._originPos = {
-                        x: e.clientX,
-                        y: e.clientY
-                    }
-                    for (var i in this.etcl.selected.cell) {
-                        var _cell = this.etcl.selected.cell[i].cell;
-                        _cell._originPos = {
-                            x: _cell.getAttr('x'),
-                            y: _cell.getAttr('y'),
-                        }
-                    }
-                })
-                this.canvasSVG.addEventListener("mousemove", function(e) {
-                    if (!!this.etcl._draggingMove) {
-                        for (var i in this.etcl.selected.cell) {
-                            var _cell = this.etcl.selected.cell[i].cell;
-                            _cell.setAttr({
-                                x: _cell._originPos.x + e.clientX - this.etcl._originPos.x,
-                                y: _cell._originPos.y + e.clientY - this.etcl._originPos.y
-                            })
-                            var outputLinks = _cell.getLinksByOutput();
-                            for (var j in outputLinks) {
-                                outputLinks[j].updateLine();
-                            }
-                            var inputLinks = _cell.getLinksByInput();
-                            for (var j in inputLinks) {
-                                inputLinks[j].updateLine();
-                            }
-                        }
-                    }
-                })
-                this.canvasSVG.addEventListener("mouseup", function(e) {
-                    Log("ETCL", "mouseup");
-                    this.etcl._draggingSelect = false;
-                    this.etcl._draggingMove = false;
-                    this.etcl.selected.cell.splice(0, this.etcl.selected.cell.length);
-                })
-            }
-        },
-        linkable: function(linkableBool) {
-            if (!!linkableBool) {
+            this._resizeMove = false;
 
-            }
+            this.svg.canvas.addEventListener("mousedown", function(e) {
+                Log("ETCL", "mousedown");
+                if (this.etcl.selected.cell.length == 0) {
+                    // TODO;
+                }
+                this.etcl._originPos = {
+                    x: e.clientX,
+                    y: e.clientY
+                }
+
+                for (var i in this.etcl.selected.cell) {
+                    var _cell = this.etcl.selected.cell[i];
+                    _cell._originPos = {
+                        x: _cell.getAttr('x'),
+                        y: _cell.getAttr('y'),
+                        width: _cell.getAttr('width'),
+                        height: _cell.getAttr('height')
+                    }
+                }
+            })
+            this.svg.canvas.addEventListener("mousemove", function(e) {
+                if (!!this.etcl._draggingMove) {
+                    for (var i in this.etcl.selected.cell) {
+                        var _cell = this.etcl.selected.cell[i];
+                        _cell.setAttr({
+                            x: _cell._originPos.x + e.clientX - this.etcl._originPos.x,
+                            y: _cell._originPos.y + e.clientY - this.etcl._originPos.y
+                        });
+                    }
+                }
+                if (!!this.etcl._resizeMove) {
+                    for (var i in this.etcl.selected.cell) {
+                        var _cell = this.etcl.selected.cell[i];
+                        _cell.setAttr({
+                            width: ((_cell._originPos.width + e.clientX - this.etcl._originPos.x) < 1 ? 1 : (_cell._originPos.width + e.clientX - this.etcl._originPos.x)),
+                            height: ((_cell._originPos.height + e.clientY - this.etcl._originPos.y) < 1 ? 1 : (_cell._originPos.height + e.clientY - this.etcl._originPos.y))
+                        });
+                    }
+                }
+            })
+            this.svg.canvas.addEventListener("click", function(e) {
+                if (!this.etcl._resizeMove) {
+                    this.etcl.selectCell();
+                }
+                this.etcl._draggingMove = false;
+                this.etcl._resizeMove = false;
+            });
+
         },
         exportToJson: function() {
-            /*
-            var exportData = {};
-            for (var i in this.saveValues) {
-                exportData[this.saveValues[i]] = this[this.saveValues[i]];
-                console.log(this[this.saveValues[i]]);
+            var exportData = {
+                etreecell: {},
+                cell: {},
+                link: {}
+            };
+
+            for (var i in this.saveValues.etreecell) {
+                var key = this.saveValues.etreecell[i];
+                exportData["etreecell"][key] = this[key];
             }
-            console.log(exportData);
-            return JSON.stringify(exportData);
-            */
+            for (var i in this.cell) {
+                var cellKey = this.cell[i];
+                exportData.cell[cellKey.id] = {};
+
+                for (var j in this.saveValues.cell) {
+                    var key = this.saveValues.cell[j];
+                    exportData.cell[cellKey.id][key] = cellKey[key];
+
+                }
+            }
+            for (var i in this.link) {
+                var linkKey = this.link[i];
+                exportData.link[linkKey.id] = {};
+
+                for (var j in this.saveValues.link) {
+                    var key = this.saveValues.link[j];
+                    if (key == "io") {
+                        exportData.link[linkKey.id]["io"] = {
+                            output: linkKey[key].output.id,
+                            input: linkKey[key].input.id
+                        };
+                    } else {
+                        exportData.link[linkKey.id][key] = linkKey[key];
+                    }
+                }
+            }
+            Log("EXPORT TO JSON", exportData);
+            return exportData;
+        },
+        importFromJson: function(rawJson) {
+            Log("IMPORT FROM JSON", rawJson);
+            var json = JSON.parse(rawJson);
+            this.setDefaultAttr(json.etreecell.defaultAttr);
+            for (var i in json.cell) {
+                var _cell = json.cell[i];
+                this.createCell(_cell.id, _cell.attr, _cell.type, _cell.data);
+            }
+            for (var i in json.link) {
+                var _link = json.link[i];
+                this.createLink(this.getCellById(_link.io.output), this.getCellById(_link.io.input), _link.attr, _link.data);
+            }
+            return this;
+
+        },
+        setDefaultAttr: function(attr) {
+            Log("SET DEFAULT ATTR", attr);
+            this.defaultAttr = attr;
+            return this;
+        },
+        selectCell: function(cell) {
+            for (var i in this.selected.cell) {
+                this.selected.cell[i].removeClass("selected");
+            }
+            this.selected.cell.splice(0, this.selected.cell.length);
+            if (!cell) {
+                return this;
+            }
+            if (cell instanceof Array) {
+                for (var i in cell) {
+                    this.selected.cell.push(cell[i]);
+                    cell[i].addClass("selected");
+                }
+            } else {
+                this.selected.cell.push(cell);
+                cell.addClass("selected");
+            }
+            return this;
         }
     }
 
-    var cell = function(etcl, cellId, cellAttr, cellType) {
+    var cell = function(etcl, cellId, cellAttr, cellType, cellData) {
         Log('CELL', 'Initialize Cell : ' + cellId);
-        this.id = cellId;
         this.etcl = etcl;
-        this.attr = {}
-        this.cellSVG = null;
+
+        this.id = cellId;
+        this.type = cellType;
+        this.attr = {};
+        this.io = {
+            input: [],
+            output: []
+        };
+        this.data = cellData;
+        this.svg = {
+            cell: null,
+            selected: null,
+            resize: null
+        }
+        this.fit = {
+            drag: [],
+            resize: []
+        }
         this.cellType = new cellTyper(etcl, this, cellType);
         this.eventList = {
             "dragstart": [],
@@ -163,12 +310,11 @@
             "editstart": [],
             "editend": [],
         }
-        this.io = {
-            input: [],
-            output: []
-        };
-        for (var i in etcl.defaultAttr.cell) {
-            this.attr[i] = etcl.defaultAttr.cell[i];
+        for (var i in etcl.defaultAttr.cell.cell) {
+            this.attr[i] = etcl.defaultAttr.cell.cell[i];
+        }
+        for (var i in cellAttr) {
+            this.attr[i] = cellAttr[i];
         }
         this.draw();
         this.draggable(this.attr["draggable"] || true);
@@ -179,49 +325,156 @@
     cell.prototype = {
         draw: function() {
             Log("CELL", "Draw cell");
-            this.cellSVG = document.createElementNS(_svgUrl, "rect");
-            this.cellSVG.setAttributeNS(null, "id", this.id);
+            // Cell
+            this.svg.cell = document.createElementNS(_svgUrl, "rect");
+            this.svg.cell.setAttributeNS(null, "id", this.id);
+            this.svg.cell.cell = this;
+            this.svg.cell.etcl = this.etcl;
+            this.svg.cell.addEventListener("mousedown", function(e) {
+                this.cell.etcl._draggingMove = true;
+                this.cell.select();
+            });
+            this.svg.cell.addEventListener("mousemove", function(e) {});
+            this.svg.cell.addEventListener("mouseup", function(e) {
+                this.etcl._draggingMove = false;
+            });
+            this.svg.cell.addEventListener("click", function(e) {
+                Log("CELL", "Click");
+                e.stopPropagation();
+            });
+
+            // Selector
+            this.svg.selected = document.createElementNS(_svgUrl, "rect");
+            this.svg.selected.setAttributeNS(null, "id", "selected_" + this.id);
+            this.svg.selected.setAttributeNS(null, "class", "selector");
+            for (var i in this.etcl.defaultAttr.cell.selected) {
+                this.svg.selected.setAttributeNS(null, i, this.etcl.defaultAttr.cell.selected[i]);
+            }
+            this.svg.selected.cell = this;
+            this.svg.selected.etcl = this.etcl;
+
+            // Resize 
+            this.svg.resize = document.createElementNS(_svgUrl, "path");
+            this.svg.resize.setAttributeNS(null, "id", "resize_" + this.id);
+            this.svg.resize.setAttributeNS(null, "class", "resize");
+            this.svg.resize.cell = this;
+            this.svg.resize.etcl = this.etcl;
+
+            for (var i in this.etcl.defaultAttr.cell.resize) {
+                this.svg.resize.setAttributeNS(null, i, this.etcl.defaultAttr.cell.resize[i]);
+            }
+            this.svg.resize.addEventListener("mousedown", function(e) {
+                this.cell.etcl._resizeMove = true;
+            })
+            this.svg.resize.addEventListener("mousemove", function(e) {
+
+            })
+            this.svg.resize.addEventListener("mouseup", function(e) {
+
+            })
+
+            this.etcl.svg.canvas.appendChild(this.svg.selected);
+            this.etcl.svg.canvas.appendChild(this.svg.resize);
+            this.etcl.svg.canvas.appendChild(this.svg.cell);
             this.setAttr(this.attr);
-            this.etcl.canvasSVG.appendChild(this.cellSVG);
-            this.cellSVG.cell = this;
-            this.cellSVG.etcl = this.etcl;
-            return this.cellSVG;
+
+
+            return this.svg.cell;
+        },
+        linkable: function() {
+
+        },
+        resizable: function(resizableBool) {
+            if (resizableBool) {
+                removeClass(this.svg.resize, "disable");
+            } else {
+                addClass(this.svg.resize, "disable");
+            }
+            return this;
+        },
+        editable: function(editableBool) {
+            if (!!editableBool) {
+                this.svg.cell.addEventListener("dblclick", function(e) {
+                    e.stopPropagation();
+                });
+            }
+            return this;
         },
         draggable: function(draggableBool) {
             Log("CELL", "Dragable");
-            if (!!draggableBool) {
-                this.cellSVG.addEventListener("mousedown", function(e) {
-                    Log("CELL", "DragStart");
-                    this.cell.etcl._draggingMove = true;
-                    this.cell.etcl.selected.cell.push(this);
-
-                });
-                this.cellSVG.addEventListener("mousemove", function(e) {});
-                this.cellSVG.addEventListener("mouseup", function(e) {
-                    Log("CELL", "DragEnd");
-                    this.cell.etcl.selected.cell.splice(this.cell.etcl.selected.cell.indexOf(this), 1);
-                });
-            }
-            return draggableBool;
+            if (!!draggableBool) {}
+            return this;
         },
         focus: function(focusBool) {},
+        select: function() {
+            this.etcl.selectCell(this);
+        },
         getAttr: function(attr) {
             return this.attr[attr] || false;
         },
         getLinksByOutput: function() {
-            var links = [];
+            var link = [];
             for (var i in this.io.output) {
-                links.push(this.etcl.getLinkById(this.io.output[i].id + "_" + this.id));
+                link.push(this.etcl.getLinkById(this.io.output[i].id + "_" + this.id));
             }
-            return links;
+            return link;
         },
 
         getLinksByInput: function() {
-            var links = [];
+            var link = [];
             for (var i in this.io.input) {
-                links.push(this.etcl.getLinkById(this.id + "_" + this.io.input[i].id));
+                link.push(this.etcl.getLinkById(this.id + "_" + this.io.input[i].id));
             }
-            return links;
+            return link;
+        },
+        addFit: function() {
+
+        },
+        moveFit: function(object, moveValue, moveType) {
+            var value = 0;
+            var float = (object.getAttribute("etcl-float") || "left,top").replace("/ /gi", "").split(",");
+
+            var values = {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0
+            }
+
+            if (float.indexOf("left") !== -1) {
+                values.x = (moveType == "x" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-left") || 0);
+            }
+            if (float.indexOf("right") !== -1) {
+                values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(this.getAttr("width")) - parseInt(object.getAttribute("width") || 0) - parseInt(object.getAttribute("etcl-margin-right") || 0);
+            }
+            if (float.indexOf("top") !== -1) {
+                values.y = (moveType == "y" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-top") || 0);
+            }
+            if (float.indexOf("bottom") !== -1) {
+                values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(this.getAttr("height")) - parseInt(object.getAttribute("height") || 0) - parseInt(object.getAttribute("etcl-margin-bottom") || 0);
+
+            }
+            if (float.indexOf("left") !== -1 && float.indexOf("right") !== -1) {
+                values.width = (moveType == "width" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-right") * -1 || 0) + parseInt(object.getAttribute("etcl-margin-left") * -1 || 0)
+            }
+            if (float.indexOf("top") !== -1 && float.indexOf("bottom") !== -1) {
+                values.height = (moveType == "height" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-top") * -1 || 0) + parseInt(object.getAttribute("etcl-margin-bottom") * -1 || 0)
+            }
+
+            switch (object.tagName) {
+                case "rect":
+                    object.setAttributeNS(null, moveType, values[moveType]);
+                    break;
+                case "div":
+                    break;
+                case "path":
+                    movePath(object, values.x, values.y);
+                    break;
+                default:
+                    break;
+            }
+
+            return this;
         },
         setAttr: function(attr) {
             Log("CELL", "Set the cell style.");
@@ -229,59 +482,96 @@
             var _cssAttr = ["cursor"];
             if (typeof attr == "object") {
                 for (var i in attr) {
+
                     if (_svgAttr.indexOf(i) !== -1) {
-                        this.cellSVG.setAttributeNS(null, i, attr[i]);
+                        this.svg.cell.setAttributeNS(null, i, attr[i]);
                         this.attr[i] = attr[i];
+                        if (i == "x" || i == "y" || i == "width" || i == "height") {
+                            this.moveFit(this.svg.selected, attr[i], i);
+                            this.moveFit(this.svg.resize, attr[i], i);
+                        }
+
                     } else if (_cssAttr.indexOf(i) !== -1) {
-                        this.cellSVG.style[i] = attr[i];
+                        this.svg.cell.style[i] = attr[i];
                         this.attr[i] = attr[i];
                     }
                 }
+            }
+
+            var outputLinks = this.getLinksByOutput();
+            for (var j in outputLinks) {
+                outputLinks[j].updateLine();
+            }
+            var inputLinks = this.getLinksByInput();
+            for (var j in inputLinks) {
+                inputLinks[j].updateLine();
             }
             return this;
         },
         addEvent: function(type, func) {
             this.eventList[type].push(func);
+            return this;
         },
         linkTo: function(linkCell, linkAttr) {
             Log("LINK", "Link to " + linkCell.id);
             this.etcl.createLink(this, linkCell, linkAttr || []);
             return this;
+        },
+        addClass: function(className) {
+            addClass(this.svg.cell, className);
+            addClass(this.svg.selected, className);
+            addClass(this.svg.resize, className);
+            return this;
+        },
+        removeClass: function(className) {
+            removeClass(this.svg.cell, className);
+            removeClass(this.svg.selected, className);
+            removeClass(this.svg.resize, className);
+            return this;
+        },
+        hasClass: function(className) {
+            return hasClass(this.svg.cell, className);
         }
     }
 
-    var link = function(etcl, outputCell, inputCell, linkId, linkAttr) {
+    var link = function(etcl, outputCell, inputCell, linkId, linkAttr, linkData) {
         Log('LINK', 'Initialize Link.' + linkId);
-        this.id = linkId;
         this.etcl = etcl;
+        this.id = linkId;
         this.attr = {};
-        this.linkSVG = null;
+        this.data = linkData;
+        this.svg = {
+            line: null,
+            text: null
+        }
         this.io = {
             output: outputCell,
             input: inputCell
         }
+        for (var i in etcl.defaultAttr.link.line) {
+            this.attr[i] = etcl.defaultAttr.link.line[i];
+
+        }
+        for (var i in linkAttr) {
+            this.attr[i] = linkAttr[i];
+        }
         outputCell.io.input.push(inputCell);
         inputCell.io.output.push(outputCell);
 
-
-
-        for (var i in etcl.defaultAttr.link) {
-            this.attr[i] = etcl.defaultAttr.link[i];
-        }
         this.draw();
     }
 
     link.prototype = {
         draw: function() {
             Log("LINK", "Draw link");
-            this.linkSVG = document.createElementNS(_svgUrl, "path");
-            this.linkSVG.setAttributeNS(null, "id", this.id);
+            this.svg.line = document.createElementNS(_svgUrl, "path");
+            this.svg.line.setAttributeNS(null, "id", this.id);
             this.setAttr(this.attr);
-            this.etcl.canvasSVG.appendChild(this.linkSVG);
-            this.linkSVG.link = this;
-            this.linkSVG.etcl = this.etcl;
+            this.etcl.svg.canvas.appendChild(this.svg.line);
+            this.svg.line.link = this;
+            this.svg.line.etcl = this.etcl;
             this.updateLine();
-            return this.linkSVG;
+            return this.svg.line;
         },
         updateLine: function() {
             this.drawLine(this.io.output.getAttr('x'), this.io.output.getAttr('y'), this.io.output.getAttr('width'), this.io.output.getAttr('height'), this.io.output.getAttr('stroke-width'),
@@ -407,7 +697,7 @@
                 y2 = [y1 - dy, y1 + dy, y1, y1][fixPoint[0]].toFixed(3),
                 x3 = [0, 0, 0, 0, x4, x4, x4 - dx, x4 + dx][fixPoint[1]].toFixed(3),
                 y3 = [0, 0, 0, 0, y1 + dy, y1 - dy, y4, y4][fixPoint[1]].toFixed(3);
-            this.linkSVG.setAttributeNS(null, "d", ['M', x1.toFixed(3), y1.toFixed(3), 'C', x2, y2, x3, y3, x4.toFixed(3), y4.toFixed(3)].join(' ').toString());
+            this.svg.line.setAttributeNS(null, "d", ['M', x1.toFixed(3), y1.toFixed(3), 'C', x2, y2, x3, y3, x4.toFixed(3), y4.toFixed(3)].join(' ').toString());
             return this;
         },
         addEvent: function(type, func) {
@@ -420,15 +710,24 @@
             if (typeof attr == "object") {
                 for (var i in attr) {
                     if (_svgAttr.indexOf(i) !== -1) {
-                        this.linkSVG.setAttributeNS(null, i, attr[i]);
+                        this.svg.line.setAttributeNS(null, i, attr[i]);
                         this.attr[i] = attr[i];
                     } else if (_cssAttr.indexOf(i) !== -1) {
-                        this.linkSVG.style[i] = attr[i];
+                        this.svg.line.style[i] = attr[i];
                         this.attr[i] = attr[i];
                     }
                 }
             }
             return this;
+        },
+        setData: function(data) {
+            for (var i in data) {
+                this.data[i] = data[i];
+            }
+            return this;
+        },
+        getData: function(dataKey) {
+            return this.data(dataKey);
         },
         getAttr: function() {
             return this.attr[attr] || false;
@@ -471,6 +770,45 @@
         }
         return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
             s4() + '-' + s4() + s4() + s4();
+    }
+
+    var hasClass = function(el, className) {
+        if (el.classList)
+            return el.classList.contains(className);
+        return !!el.className.match(new RegExp('(\\s|^)' + className + '(\\s|$)'));
+    }
+
+    var addClass = function(el, className) {
+        if (el.classList)
+            el.classList.add(className)
+        else if (!hasClass(el, className))
+            el.className += " " + className;
+    }
+
+    var removeClass = function(el, className) {
+        if (el.classList)
+            el.classList.remove(className)
+        else if (hasClass(el, className)) {
+            var reg = new RegExp('(\\s|^)' + className + '(\\s|$)');
+            el.className = el.className.replace(reg, ' ');
+        }
+    }
+    var movePath = function(object, moveX, moveY) {
+        var rawPath = object.getAttribute("etcl-d").split(" ");
+        var xyFlag = true;
+        for (var i in rawPath) {
+            if (!isNaN(parseInt(rawPath[i]))) {
+                if (xyFlag) {
+                    rawPath[i] = parseInt(rawPath[i]) + moveX;
+                } else {
+                    rawPath[i] = parseInt(rawPath[i]) + moveY;
+                }
+                xyFlag = !xyFlag;
+            }
+
+        }
+        object.setAttributeNS(null, "d", rawPath.join(" "));
+        return rawPath.join(" ");
     }
 
     window.etcl = window.etreecell = etreecell;

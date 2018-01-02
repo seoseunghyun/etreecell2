@@ -8,20 +8,29 @@
 
 <body>
     <div id="canvas" style="width: 200%; height: 200%;"></div>
+
     <script type="text/javascript">
         var e = new etcl('canvas');
-        var cell1 = e.createCell();
-        var cell2 = e.createCell();
+
+        var cell1 = e.createCell("C1");
+        var cell2 = e.createCell("C2");
+        cell1.linkTo(cell2);
         cell1.setAttr({
             x: 300,
             y: 50
         });
+
         cell2.setAttr({
                 x: 10,
                 y: 200
             })
             .linkTo(cell1)
             .linkTo(cell1);
+
+        //e.importFromJson('{"etreecell":{"defaultAttr":{"cell":{"x":10,"y":10,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"d":"M 5 5 L 50 50","rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"link":{"stroke":"black","stroke-width":2,"fill":"none"}}},"cell":{"C1":{"id":"C1","type":"textbox","attr":{"x":300,"y":50,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"d":"M 5 5 L 50 50","rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}},"C2":{"id":"C2","type":"textbox","attr":{"x":10,"y":200,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"d":"M 5 5 L 50 50","rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}}},"link":{"C2_C1":{"id":"C2_C1","attr":{"stroke":"black","stroke-width":2,"fill":"none"},"io":{"output":"C2","input":"C1"},"data":{}}}}');
+        setTimeout(function() {
+            //e.exportToJson();
+        }, 1000)
 
         window.e = e;
     </script>
