@@ -10,7 +10,8 @@
             canvas: document.getElementById(canvasId)
         }
         this.svg = {
-            canvas: document.createElementNS(_svgUrl, "svg")
+            canvas: document.createElementNS(_svgUrl, "svg"),
+            linkingLine: document.createElementNS(_svgUrl, "path")
         }
 
         this.saveValues = {
@@ -66,7 +67,7 @@
                 },
                 linker: {
                     "common": {
-                        "fill": "rgba(0,0,0,.4)",
+                        "fill": "rgba(0,0,0,.2)",
                         "cx": 6,
                         "cy": 6,
                         "r": 4,
@@ -94,13 +95,24 @@
                     "stroke": "black",
                     "stroke-width": 2,
                     "fill": "none"
+                },
+                linkingLine: {
+                    "d": "M 0 0 0 0",
+                    "stroke-dasharray": "3,3",
+                    "stroke": "rgba(0,0,0,.3)",
+                    "stroke-width": 2,
+                    "start-margin-left": -1,
+                    "start-margin-top": -1,
+                    "end-margin-left": -10,
+                    "end-margin-top": -10
                 }
             },
             helper: {
                 css: {
+                    linkingLine: '.linkingLine { display:none;} .linkingLine.show { display:inline;}',
                     selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:orange; opacity:1; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
                     resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}',
-                    linker: '.linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .linker.send {opacity:1; fill:#3695dd; transition: opacity,fill .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);  }',
+                    linker: '.linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);} .linker.linkingStart { fill:#009cff;opacity:1 !important; } .linker.linkingEnd { fill:#f13870;opacity:1 !important; }',
                 }
             }
         }
@@ -166,12 +178,21 @@
         draw: function() {
             this._draggingMove = false;
             this._draggingSelect = false;
-            this._resizeMove = false;
+            this._draggingResize = false;
+            this._draggingTarget = false;
 
             this.svg.canvas.setAttribute('width', '100%');
             this.svg.canvas.setAttribute('height', '100%');
             this.svg.canvas.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
             this.dom.canvas.appendChild(this.svg.canvas);
+
+            for (var i in this.defaultAttr.link.linkingLine) {
+                this.svg.linkingLine.setAttributeNS(null, i, this.defaultAttr.link.linkingLine[i]);
+            }
+
+            addClass(this.svg.linkingLine, "linkingLine");
+
+            this.svg.canvas.appendChild(this.svg.linkingLine);
             this.svg.canvas.addEventListener("dblclick", function(e) {
                 if (!this.etcl._draggingMove && !this._draggingSelect) {
                     this.etcl.createCell(null, { x: e.clientX - this.etcl.defaultAttr.cell.cell.width / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"], y: e.clientY - this.etcl.defaultAttr.cell.cell.height / 2 - this.etcl.defaultAttr.cell.cell["stroke-width"] });
@@ -190,16 +211,34 @@
                 for (var i in this.etcl.selected.cell) {
                     var _cell = this.etcl.selected.cell[i];
                     _cell._originPos = {
+                            x: _cell.getAttr('x'),
+                            y: _cell.getAttr('y'),
+                            width: _cell.getAttr('width'),
+                            height: _cell.getAttr('height')
+                        }
+                        /*
+                        _cell.setAttr({
+                            x: _cell._originPos.x,
+                            y: _cell._originPos.y
+                        });
+                        */
+                }
+                if (!!this.etcl._draggingResize) {
+                    var _cell = this.etcl._draggingResize.cell;
+                    _cell._originPos = {
                         x: _cell.getAttr('x'),
                         y: _cell.getAttr('y'),
                         width: _cell.getAttr('width'),
                         height: _cell.getAttr('height')
                     }
+                }
+                if (!!this.etcl._draggingLink) {
+                    var _linker = this.etcl.svg.linkingLine;
+                    var _margin = [_linker.getAttribute("start-margin-left"), _linker.getAttribute("start-margin-top"), _linker.getAttribute("end-margin-left"), _linker.getAttribute("end-margin-top")];
 
-                    _cell.setAttr({
-                        x: _cell._originPos.x,
-                        y: _cell._originPos.y
-                    });
+                    _linker.setAttributeNS(null, "d", "M 0 0 0 0");
+
+                    addClass(_linker, "show");
                 }
             })
             this.svg.canvas.addEventListener("mousemove", function(e) {
@@ -212,22 +251,49 @@
                         });
                     }
                 }
-                if (!!this.etcl._resizeMove) {
-                    for (var i in this.etcl.selected.cell) {
-                        var _cell = this.etcl.selected.cell[i];
-                        _cell.setAttr({
-                            width: ((_cell._originPos.width + e.clientX - this.etcl._originPos.x) < 1 ? 1 : (_cell._originPos.width + e.clientX - this.etcl._originPos.x)),
-                            height: ((_cell._originPos.height + e.clientY - this.etcl._originPos.y) < 1 ? 1 : (_cell._originPos.height + e.clientY - this.etcl._originPos.y))
-                        });
-                    }
+                if (!!this.etcl._draggingResize) {
+                    //for (var i in this.etcl.selected.cell) {
+                    //var _cell = this.etcl.selected.cell[i];
+                    _cell = this.etcl._draggingResize.cell;
+                    _cell.setAttr({
+                        width: ((_cell._originPos.width + e.clientX - this.etcl._originPos.x) < 1 ? 1 : (_cell._originPos.width + e.clientX - this.etcl._originPos.x)),
+                        height: ((_cell._originPos.height + e.clientY - this.etcl._originPos.y) < 1 ? 1 : (_cell._originPos.height + e.clientY - this.etcl._originPos.y))
+                    });
+                    //}
+                }
+                if (!!this.etcl._draggingLink) {
+                    var _linker = this.etcl.svg.linkingLine;
+                    var _startLinker = this.etcl._draggingLink;
+                    addClass(this.etcl._draggingLink, "linkingStart");
+                    var _margin = [_linker.getAttribute("start-margin-left"), _linker.getAttribute("start-margin-top"), _linker.getAttribute("end-margin-left"), _linker.getAttribute("end-margin-top")];
+                    _linker.setAttributeNS(null, "d", "M " + (parseInt(_startLinker.getAttribute("cx")) + parseInt(_margin[0])) + " " + (parseInt(_startLinker.getAttribute("cy")) + parseInt(_margin[1])) + " L " + (e.clientX + parseInt(_margin[2])) + " " + (e.clientY + parseInt(_margin[3])));
+
                 }
             })
             this.svg.canvas.addEventListener("click", function(e) {
-                if (!this.etcl._resizeMove) {
+                if (!this.etcl._draggingResize) {
                     this.etcl.selectCell();
                 }
+                if (!!this.etcl._draggingLink && !!this.etcl._draggingTarget) {
+                    this.etcl._draggingLink.cell.linkTo(this.etcl._draggingTarget.cell);
+                }
+
                 this.etcl._draggingMove = false;
-                this.etcl._resizeMove = false;
+                this.etcl._draggingResize = false;
+                this.etcl._draggingLink = false;
+                this.etcl._draggingTarget = false;
+
+                var _startLinker = this.etcl.dom.canvas.getElementsByClassName("linkingStart");
+                var _startEnd = this.etcl.dom.canvas.getElementsByClassName("linkingEnd");
+
+                for (var i = 0; i < _startLinker.length; i++) {
+                    removeClass(_startLinker[i], "linkingStart");
+                }
+                for (var i = 0; i < _startEnd.length; i++) {
+                    removeClass(_startEnd[i], "linkingEnd");
+                }
+                if (!!this.etcl._draggingLink) {}
+                removeClass(this.etcl.svg.linkingLine, "show");
             });
 
         },
@@ -333,7 +399,6 @@
         },
         editCancelCell: function(cell) {
             cell.removeClass("editing");
-            console.log("A");
             this.editing.cell = null;
             //delete(cell._tmpData);
         },
@@ -471,16 +536,24 @@
                     for (var j in this.cell.svg.linker) {
                         addClass(this.cell.svg.linker[j], 'show');
                     }
-                })
+                });
                 _svgLinker.addEventListener("mouseleave", function(e) {
                     for (var j in this.cell.svg.linker) {
                         removeClass(this.cell.svg.linker[j], 'show');
+                        removeClass(this.cell.svg.linker[j], 'linkingEnd');
                     }
-                })
+                });
 
                 _svgLinker.addEventListener("mousedown", function(e) {
                     // TODO
-                })
+                    this.etcl._draggingLink = this;
+                });
+                _svgLinker.addEventListener("mousemove", function(e) {
+                    if (!!this.etcl._draggingLink && this.etcl._draggingLink != this) {
+                        addClass(this, "linkingEnd");
+                        this.etcl._draggingTarget = this;
+                    }
+                });
             }
 
 
@@ -488,7 +561,7 @@
                 this.svg.resize.setAttributeNS(null, i, this.etcl.defaultAttr.cell.resize[i]);
             }
             this.svg.resize.addEventListener("mousedown", function(e) {
-                this.cell.etcl._resizeMove = true;
+                this.cell.etcl._draggingResize = this;
             })
             this.svg.resize.addEventListener("mousemove", function(e) {
 
@@ -572,7 +645,7 @@
         moveFit: function(object, moveValue, moveType) {
             var value = 0;
             var float = (object.getAttribute("etcl-float") || "left,top").replace("/ /gi", "").split(",");
-            console.log(object.getAttribute("etcl-float"));
+
             var values = {
                 x: 0,
                 y: 0,
@@ -600,9 +673,11 @@
 
             }
             if (float.indexOf("left") !== -1 && float.indexOf("right") !== -1) {
+                values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(object.getAttribute("etcl-margin-left") || 0);
                 values.width = (moveType == "width" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-right") * -1 || 0) + parseInt(object.getAttribute("etcl-margin-left") * -1 || 0)
             }
             if (float.indexOf("top") !== -1 && float.indexOf("bottom") !== -1) {
+                values.y = (moveType == "y" ? moveValue : this.getAttr("y")) + parseInt(object.getAttribute("etcl-margin-top") || 0);
                 values.height = (moveType == "height" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-top") * -1 || 0) + parseInt(object.getAttribute("etcl-margin-bottom") * -1 || 0)
             }
 
