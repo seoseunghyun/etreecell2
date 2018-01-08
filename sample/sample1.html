@@ -4,32 +4,38 @@
     <title>Sample 1</title>
     <script type="text/javascript" src="../js/etcl.js"></script>
     <script type="text/javascript" src="../js/etclTypes.js"></script>
+    <style>
+        body {
+            background: rgba(0, 0, 0, .8);
+        }
+    </style>
 </head>
 
 <body>
-    <div id="canvas" style="width: 200%; height: 200%;"></div>
+    <div id="canvas" style="width: 200%; height: 200%;left:0px;top:0px;position:absolute;"></div>
 
     <script type="text/javascript">
         var e = new etcl('canvas');
-        /*
-                var cell1 = e.createCell("C1");
-                var cell2 = e.createCell("C2");
-                cell1.linkTo(cell2);
-                cell1.setAttr({
-                    x: 300,
-                    y: 50
-                });
+        e.addCellTypeList(newTypes);
 
-                cell2.setAttr({
-                        x: 10,
-                        y: 200
-                    })
-                    .linkTo(cell1)
-                    .linkTo(cell1);
-        */
-        e.importFromJson('{"etreecell":{"defaultAttr":{"cell":{"cell":{"x":20,"y":10,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"selected":{"x":0,"y":0,"etcl-margin-left":-12,"etcl-margin-right":-12,"etcl-margin-top":-12,"etcl-margin-bottom":-12,"width":100,"height":20,"etcl-float":"left,top,right,bottom","stroke-dasharray":"3, 3","stroke-width":2,"stroke":"black","rx":7,"ry":7,"fill":"none"},"resize":{"etcl-margin-right":-7,"etcl-margin-bottom":-7,"etcl-float":"right,bottom","width":10,"height":10,"cursor":"nw-resize","fill":"rgba(0,0,0,.2)","etcl-d":"M 10 10 L 0 10 L 10 0 Z"},"linker":{"common":{"fill":"rgba(0,0,0,.2)","cx":6,"cy":6,"r":4,"etcl-margin-right":-5,"etcl-margin-top":-5,"etcl-margin-bottom":-5,"etcl-margin-left":-5},"top":{"etcl-float":"x-center,top"},"right":{"etcl-float":"y-center,right"},"bottom":{"etcl-float":"x-center,bottom"},"left":{"etcl-float":"y-center,left"}}},"link":{"line":{"stroke":"black","stroke-width":2,"fill":"none"}},"helper":{"css":{"selector":".selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:orange; opacity:1; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }","resize":".resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}","linker":".linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .linker.send {opacity:1; fill:#3695dd; transition: opacity,fill .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);  }"}}}},"cell":{"C1":{"id":"C1","type":"textbox","attr":{"x":300,"y":50,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}},"C2":{"id":"C2","type":"textbox","attr":{"x":10,"y":200,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}},"a9d08aa9-43ea-5589-f771-323426f9f402":{"id":"a9d08aa9-43ea-5589-f771-323426f9f402","type":"textbox","attr":{"x":397,"y":448,"width":120,"height":30,"stroke":"black","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}},"b90e01ad-280d-7f60-244e-cebcdb4d0f88":{"id":"b90e01ad-280d-7f60-244e-cebcdb4d0f88","type":"textbox","attr":{"x":555,"y":217,"width":159,"height":155,"stroke":"black","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{}}},"link":{"C1_C2":{"id":"C1_C2","attr":{"stroke":"black","stroke-width":2,"fill":"none"},"io":{"output":"C1","input":"C2"},"data":{}},"C2_C1":{"id":"C2_C1","attr":{"stroke":"black","stroke-width":2,"fill":"none"},"io":{"output":"C2","input":"C1"},"data":{}}}}');
+        var cell1 = e.createCell("C1");
+        var cell2 = e.createCell("C2");
+        cell1.linkTo(cell2);
+        cell1.setAttr({
+            x: 300,
+            y: 50
+        });
+
+        cell2.setAttr({
+                x: 10,
+                y: 200
+            })
+            .linkTo(cell1)
+            .linkTo(cell1);
+
+        //e.importFromJson('{"etreecell":{"defaultAttr":{"cell":{"cell":{"x":20,"y":10,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"selected":{"x":0,"y":0,"etcl-margin-left":-12,"etcl-margin-right":-12,"etcl-margin-top":-12,"etcl-margin-bottom":-12,"width":100,"height":20,"etcl-float":"left,top,right,bottom","stroke-dasharray":"3, 3","stroke-width":2,"stroke":"white","rx":7,"ry":7,"fill":"none"},"resize":{"etcl-margin-right":-7,"etcl-margin-bottom":-7,"etcl-float":"right,bottom","width":10,"height":10,"cursor":"nw-resize","fill":"rgba(255,255,255,.2)","etcl-d":"M 10 10 L 0 10 L 10 0 Z"},"linker":{"common":{"fill":"rgba(255,255,255,.2)","cx":6,"cy":6,"r":4,"etcl-margin-right":-5,"etcl-margin-top":-5,"etcl-margin-bottom":-5,"etcl-margin-left":-5},"top":{"etcl-float":"x-center,top"},"right":{"etcl-float":"y-center,right"},"bottom":{"etcl-float":"x-center,bottom"},"left":{"etcl-float":"y-center,left"}}},"link":{"line":{"stroke":"white","stroke-width":2,"fill":"none"},"linkingLine":{"d":"M 0 0 0 0","stroke-dasharray":"3,3","stroke":"rgba(255,255,255,.3)","stroke-width":2,"start-margin-left":-1,"start-margin-top":-1,"end-margin-left":-10,"end-margin-top":-10}},"helper":{"css":{"body":"body {user-select: none;}","linkingLine":".linkingLine { display:none;} .linkingLine.show { display:inline;}","selector":".selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:#cef740; opacity:.7 !important; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }","resize":".resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}","linker":".linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);} .linker.linkingStart { fill:#009cff;opacity:1 !important; } .linker.linkingEnd { fill:#f13870;opacity:1 !important; }"}}}},"cell":{"C1":{"id":"C1","typeId":"textbox","attr":{"x":300,"y":50,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"asdfdsaf","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}},"C2":{"id":"C2","typeId":"textbox","attr":{"x":10,"y":200,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"Double click for edit.","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}},"887189e0-a6aa-f13b-ebcd-3c45ab800282":{"id":"887189e0-a6aa-f13b-ebcd-3c45ab800282","typeId":"textbox","attr":{"x":339,"y":197,"width":172,"height":231,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"Double click for edit.dddd<br><br><br>sdafasdf<br><br><br>asdfasdfaf","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}},"1ade5d84-c27b-2f59-60b6-941495832ff1":{"id":"1ade5d84-c27b-2f59-60b6-941495832ff1","typeId":"textbox","attr":{"x":237,"y":561,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"Double click for edit.","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}},"e83b50d7-1206-7ff2-74c0-a62acf511f7f":{"id":"e83b50d7-1206-7ff2-74c0-a62acf511f7f","typeId":"textbox","attr":{"x":261,"y":604,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"Double click for edit.","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}},"9f14064c-3e35-29cb-c101-c27eba23839f":{"id":"9f14064c-3e35-29cb-c101-c27eba23839f","typeId":"textbox","attr":{"x":117,"y":412,"width":200,"height":30,"stroke":"white","fill":"none","stroke-width":2,"rx":10,"ry":10,"pointer-events":"visible","cursor":"pointer"},"data":{"text":"Double click for edit.","style":{"border":"none","text-align":"center","color":"white","background":"none","font-size":"15px","pointer-events":"none","line-height":"100%","overflow":"hidden"}}}},"link":{"C1_C2":{"id":"C1_C2","attr":{"stroke":"white","stroke-width":2,"fill":"none"},"io":{"output":"C1","input":"C2"},"data":{}},"C2_C1":{"id":"C2_C1","attr":{"stroke":"white","stroke-width":2,"fill":"none"},"io":{"output":"C2","input":"C1"},"data":{}},"9f14064c-3e35-29cb-c101-c27eba23839f_887189e0-a6aa-f13b-ebcd-3c45ab800282":{"id":"9f14064c-3e35-29cb-c101-c27eba23839f_887189e0-a6aa-f13b-ebcd-3c45ab800282","attr":{"stroke":"white","stroke-width":2,"fill":"none"},"io":{"output":"9f14064c-3e35-29cb-c101-c27eba23839f","input":"887189e0-a6aa-f13b-ebcd-3c45ab800282"},"data":{}}}}');
         setTimeout(function() {
-            e.exportToJson();
+            console.log(JSON.stringify(e.exportToJson()));
         }, 10000)
 
         window.e = e;

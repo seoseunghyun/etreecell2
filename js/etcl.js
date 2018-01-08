@@ -7,7 +7,8 @@
     var etreecell = function(canvasId) {
         Log('INIT', 'Initialize etreecell canvas.');
         this.dom = {
-            canvas: document.getElementById(canvasId)
+            canvas: document.getElementById(canvasId),
+            html: document.createElement("div")
         }
         this.svg = {
             canvas: document.createElementNS(_svgUrl, "svg"),
@@ -16,21 +17,24 @@
 
         this.saveValues = {
             etreecell: ["defaultAttr"],
-            cell: ["id", "type", "attr", "data"],
+            cell: ["id", "typeId", "attr", "data"],
             link: ["id", "attr", "io", "id", "data"]
         };
 
         this.cell = {};
         this.link = {};
-        this.cellTyper = cellTyper;
+        this.typeList = {
+            cell: {},
+            link: {}
+        }
         this.defaultAttr = {
             cell: {
                 cell: {
                     "x": 20,
                     "y": 10,
-                    "width": 120,
+                    "width": 200,
                     "height": 30,
-                    "stroke": "black",
+                    "stroke": "white",
                     "fill": "none",
                     "stroke-width": 2,
                     "rx": 10,
@@ -50,7 +54,7 @@
                     "etcl-float": "left,top,right,bottom",
                     "stroke-dasharray": "3, 3",
                     "stroke-width": 2,
-                    "stroke": "black",
+                    "stroke": "white",
                     "rx": 7,
                     "ry": 7,
                     "fill": "none"
@@ -62,12 +66,12 @@
                     "width": 10,
                     "height": 10,
                     "cursor": "nw-resize",
-                    "fill": "rgba(0,0,0,.2)",
+                    "fill": "rgba(255,255,255,.2)",
                     "etcl-d": "M 10 10 L 0 10 L 10 0 Z"
                 },
                 linker: {
                     "common": {
-                        "fill": "rgba(0,0,0,.2)",
+                        "fill": "rgba(255,255,255,.2)",
                         "cx": 6,
                         "cy": 6,
                         "r": 4,
@@ -92,14 +96,14 @@
             },
             link: {
                 line: {
-                    "stroke": "black",
+                    "stroke": "white",
                     "stroke-width": 2,
                     "fill": "none"
                 },
                 linkingLine: {
                     "d": "M 0 0 0 0",
                     "stroke-dasharray": "3,3",
-                    "stroke": "rgba(0,0,0,.3)",
+                    "stroke": "rgba(255,255,255,.3)",
                     "stroke-width": 2,
                     "start-margin-left": -1,
                     "start-margin-top": -1,
@@ -109,8 +113,9 @@
             },
             helper: {
                 css: {
+                    body: 'body {user-select: none;}',
                     linkingLine: '.linkingLine { display:none;} .linkingLine.show { display:inline;}',
-                    selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:orange; opacity:1; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
+                    selector: '.selector { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .selector.editing { stroke:#cef740; opacity:.7 !important; } .selector.selected {opacity:.3; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); .selector.disable {display:none;} }',
                     resize: '.resize { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.selected {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .resize.disable {display:none;}',
                     linker: '.linker { opacity: 0; z-index:-1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000); } .linker.show {opacity:1; transition: opacity .2s cubic-bezier(0.860, 0.000, 0.070, 1.000);} .linker.linkingStart { fill:#009cff;opacity:1 !important; } .linker.linkingEnd { fill:#f13870;opacity:1 !important; }',
                 }
@@ -140,17 +145,22 @@
             _cssString += this.defaultAttr.helper.css[i] + " ";
         }
         this.createCSS(_cssString);
+        return this;
     }
 
     etreecell.prototype = {
         createCell: function(cellId, cellAttr, cellType, cellData) {
             Log('ETCL', 'Create Cell.');
             var uniqId = guid();
-            var _cell = this.cell[cellId || uniqId] = new cell(this, cellId || uniqId, cellAttr || {}, cellType || "textbox", cellData || {});
+            var _cell = this.cell[cellId || uniqId] = new cell(this, cellId || uniqId, cellAttr || {}, cellType || "textbox", cellData || null);
             return _cell;
         },
         createLink: function(outputCell, inputCell, linkAttr, linkData) {
             Log('ETCL', 'Create Link.');
+            if (outputCell == inputCell) {
+                Log("ETCL", "OutputCell and InputCell is equal cell.");
+                return false;
+            }
             if (!!this.link[outputCell.id + "_" + inputCell.id]) {
                 Log("ETCL", "This is existed link.");
                 return false;
@@ -183,8 +193,18 @@
 
             this.svg.canvas.setAttribute('width', '100%');
             this.svg.canvas.setAttribute('height', '100%');
+            this.svg.canvas.setAttribute('style', 'position:absolute;');
+            this.svg.canvas.setAttribute('left', '0');
+            this.svg.canvas.setAttribute('top', '0');
             this.svg.canvas.setAttributeNS(_xmlnsUrl, "xmlns:xlink", _xlinkUrl);
             this.dom.canvas.appendChild(this.svg.canvas);
+
+            this.dom.html.setAttribute('width', '100%');
+            this.dom.html.setAttribute('height', '100%');
+            this.dom.html.setAttribute('style', 'position:absolute;');
+            this.dom.html.setAttribute('left', '0');
+            this.dom.html.setAttribute('top', '0');
+            this.dom.canvas.appendChild(this.dom.html);
 
             for (var i in this.defaultAttr.link.linkingLine) {
                 this.svg.linkingLine.setAttributeNS(null, i, this.defaultAttr.link.linkingLine[i]);
@@ -240,7 +260,7 @@
 
                     addClass(_linker, "show");
                 }
-            })
+            }, false)
             this.svg.canvas.addEventListener("mousemove", function(e) {
                 if (!!this.etcl._draggingMove) {
                     for (var i in this.etcl.selected.cell) {
@@ -274,26 +294,28 @@
                 if (!this.etcl._draggingResize) {
                     this.etcl.selectCell();
                 }
+                this.etcl._draggingResize = false;
+            })
+            this.svg.canvas.addEventListener("mouseup", function(e) {
                 if (!!this.etcl._draggingLink && !!this.etcl._draggingTarget) {
                     this.etcl._draggingLink.cell.linkTo(this.etcl._draggingTarget.cell);
                 }
 
+
                 this.etcl._draggingMove = false;
-                this.etcl._draggingResize = false;
                 this.etcl._draggingLink = false;
                 this.etcl._draggingTarget = false;
 
                 var _startLinker = this.etcl.dom.canvas.getElementsByClassName("linkingStart");
-                var _startEnd = this.etcl.dom.canvas.getElementsByClassName("linkingEnd");
-
-                for (var i = 0; i < _startLinker.length; i++) {
-                    removeClass(_startLinker[i], "linkingStart");
+                var _endLinker = this.etcl.dom.canvas.getElementsByClassName("linkingEnd");
+                while (_startLinker.length != 0) {
+                    removeClass(_startLinker[0], "linkingStart");
                 }
-                for (var i = 0; i < _startEnd.length; i++) {
-                    removeClass(_startEnd[i], "linkingEnd");
+                while (_endLinker.length != 0) {
+                    removeClass(_endLinker[0], "linkingEnd");
                 }
-                if (!!this.etcl._draggingLink) {}
                 removeClass(this.etcl.svg.linkingLine, "show");
+
             });
 
         },
@@ -364,7 +386,7 @@
 
             if (!!this.editing.cell) {
                 if (this.editing.cell != cell) {
-                    this.editing.cell.editCancel();
+                    this.editing.cell.editEnd();
                 }
             }
             this.selected.cell.splice(0, this.selected.cell.length);
@@ -384,27 +406,65 @@
         },
         editStartCell: function(cell) {
             cell.addClass("editing");
-
             this.selectCell(cell);
             this.editing.cell = cell;
-            //cell._tmpData = JSON.parse(JSON.stringify(cell.data));
-        },
-        editSaveCell: function(cell, newData) {
-            cell.removeClass("editing");
-            this.editing.cell = null;
-            if (!!newData) {
-                updateDataCell(this.updateDataCell(newData));
+
+            try {
+                cell.type.editStart();
+                cell.type.tmpData = JSON.parse(JSON.stringify(cell.data));
+                cell.setAttr({
+                    x: cell.getAttr("x"),
+                    y: cell.getAttr("y"),
+                    width: cell.getAttr("width"),
+                    height: cell.getAttr("height")
+                })
+            } catch (e) {
+                Log("ETCL_TYPE", "Edit Start is not exist function." + e)
             }
-            // delete(cell._tmpData);
         },
-        editCancelCell: function(cell) {
+        editEndCell: function(cell) {
             cell.removeClass("editing");
             this.editing.cell = null;
-            //delete(cell._tmpData);
+            try {
+                cell.type.editEnd();
+            } catch (e) {
+                Log("ETCL_TYPE", "Edit End is not exist function.")
+            }
+
         },
         updateDataCell: function(cell, newData) {
-            //delete(cell.data);
-            //cell.data = newData || _tmpData;
+            try {
+                cell.type.updateData();
+            } catch (e) {
+                Log("ETCL_TYPE", "Update Data is not exist function.")
+            }
+
+        },
+        editFocusCell: function(cell, newData) {
+            try {
+                cell.type.editFocus();
+            } catch (e) {
+                Log("ETCL_TYPE", "Edit Focus is not exist function.")
+            }
+
+        },
+        addCellTypeList: function(typeObjectlist) {
+            Log("ETCL_TYPE", "Add cell type");
+            for (var i in typeObjectlist["cell"]) {
+                this.typeList.cell[i] = typeObjectlist["cell"][i];
+            }
+            for (var i in typeObjectlist["link"]) {
+                this.typeList.link[i] = typeObjectlist["link"][i];
+            }
+            return this;
+        },
+        createCellType: function(etcl, cell, typeId) {
+            Log("ETCL_TYPE", "Create cell type");
+            var type = new this.typeList.cell[typeId](etcl, cell, typeId);
+            type.id = typeId;
+            type.etcl = etcl;
+            type.cell = cell;
+            return type;
         }
     }
 
@@ -413,7 +473,7 @@
         this.etcl = etcl;
 
         this.id = cellId;
-        this.type = cellType;
+        this.typeId = cellType;
         this.attr = {};
         this.io = {
             input: [],
@@ -431,17 +491,15 @@
                 left: null
             }
         }
-        this.fit = {
-            drag: [],
-            resize: []
-        }
-        this.cellType = new cellTyper(etcl, this, cellType);
+        this.fitList = [];
+
         this.eventList = {
-            "dragstart": [],
-            "dragmove": [],
-            "dragend": [],
-            "editstart": [],
-            "editend": [],
+            "dragStart": [],
+            "dragMove": [],
+            "dragEnd": [],
+            "editStart": [],
+            "editEnd": [],
+            "updateData": []
         }
         for (var i in etcl.defaultAttr.cell.cell) {
             this.attr[i] = etcl.defaultAttr.cell.cell[i];
@@ -451,9 +509,9 @@
         }
 
 
-        this.draw();
         this.draggable(this.attr["draggable"] || true);
-
+        this.type = etcl.createCellType(etcl, this, cellType);
+        this.draw();
         return this;
     }
 
@@ -474,11 +532,20 @@
                 for (var i in this.cell.svg.linker) {
                     addClass(this.cell.svg.linker[i], 'show');
                 }
+                if (!!this.etcl._draggingLink && this.etcl._draggingLink.cell.id != this.id) {
+                    for (var i in this.cell.svg.linker) {
+                        addClass(this.cell.svg.linker[i], 'linkingEnd');
+                    }
+                    this.etcl._draggingTarget = this;
+                }
+
             });
             this.svg.cell.addEventListener("mouseleave", function(e) {
                 for (var i in this.cell.svg.linker) {
                     removeClass(this.cell.svg.linker[i], 'show');
+                    removeClass(this.cell.svg.linker[i], 'linkingEnd');
                 }
+                this.etcl._draggingTarget = false;
             });
             this.svg.cell.addEventListener("mouseup", function(e) {
                 this.etcl._draggingMove = false;
@@ -613,12 +680,16 @@
             this.etcl.editStartCell(this);
             return this;
         },
-        editCancel: function() {
-            this.etcl.editCancelCell(this);
+        editEnd: function() {
+            this.etcl.editEndCell(this);
             return this;
         },
-        editSave: function() {
-            this.etcl.editSaveCell(this);
+        editFocus: function(newData) {
+            this.etcl.editFocusCell(this, newData);
+            return this;
+        },
+        updateData: function(newData) {
+            this.etcl.updateDataCell(this, newData);
             return this;
         },
         getAttr: function(attr) {
@@ -642,7 +713,7 @@
         addFit: function() {
 
         },
-        moveFit: function(object, moveValue, moveType) {
+        floatFit: function(object, moveValue, moveType) {
             var value = 0;
             var float = (object.getAttribute("etcl-float") || "left,top").replace("/ /gi", "").split(",");
 
@@ -652,7 +723,6 @@
                 width: 0,
                 height: 0
             }
-
             if (float.indexOf("left") !== -1) {
                 values.x = (moveType == "x" ? moveValue : this.getAttr("x")) + parseInt(object.getAttribute("etcl-margin-left") || 0);
             }
@@ -681,11 +751,9 @@
                 values.height = (moveType == "height" ? moveValue : 0) + parseInt(object.getAttribute("etcl-margin-top") * -1 || 0) + parseInt(object.getAttribute("etcl-margin-bottom") * -1 || 0)
             }
 
-            switch (object.tagName) {
+            switch (object.tagName.toLowerCase()) {
                 case "rect":
                     object.setAttributeNS(null, moveType, values[moveType]);
-                    break;
-                case "div":
                     break;
                 case "path":
                     movePath(object, values.x, values.y);
@@ -695,6 +763,16 @@
                     object.setAttributeNS(null, "cy", values.y);
                     break;
                 default:
+                    object.style.position = "absolute";
+                    if (moveType == "x") {
+                        object.style.left = values.x;
+                    } else if (moveType == "y") {
+                        object.style.top = values.y;
+                    } else if (moveType == "width") {
+                        object.style.width = values.width;
+                    } else if (moveType == "height") {
+                        object.style.height = values.height;
+                    }
                     break;
             }
 
@@ -712,12 +790,17 @@
                         this.attr[i] = attr[i];
 
                         if (i == "x" || i == "y" || i == "width" || i == "height") {
-                            this.moveFit(this.svg.resize, attr[i], i);
-                            this.moveFit(this.svg.selected, attr[i], i);
-                            this.moveFit(this.svg.linker.top, attr[i], i);
-                            this.moveFit(this.svg.linker.right, attr[i], i);
-                            this.moveFit(this.svg.linker.bottom, attr[i], i);
-                            this.moveFit(this.svg.linker.left, attr[i], i);
+                            this.floatFit(this.svg.resize, attr[i], i);
+                            this.floatFit(this.svg.selected, attr[i], i);
+                            this.floatFit(this.svg.linker.top, attr[i], i);
+                            this.floatFit(this.svg.linker.right, attr[i], i);
+                            this.floatFit(this.svg.linker.bottom, attr[i], i);
+                            this.floatFit(this.svg.linker.left, attr[i], i);
+                        }
+                        for (var j in this.fitList) {
+                            if (i == "x" || i == "y" || i == "width" || i == "height") {
+                                this.floatFit(this.fitList[j], attr[i], i);
+                            }
                         }
 
                     } else if (_cssAttr.indexOf(i) !== -1) {
@@ -964,26 +1047,11 @@
     }
 
 
-    var cellTyper = function(etcl, cell, cellType) {
-        this.etcl = etcl;
-        this.cell = cell;
-        this.cellType = cellType;
-        try {
-            this[cellType](etcl, cell);
-        } catch (e) {
-            Log("CELL TYPER", "This is not valid cell type.");
-        }
-    }
 
-    cellTyper.prototype = {
-        textbox: function(etcl, cell) {
-
-        }
-    }
 
     var Log = function(key, printTxt) {
         var print = true;
-        if (print) {
+        if (print && key == "ETCL_TYPE") {
             if (typeof printTxt == 'object') {
                 printTxt = JSON.stringify(printTxt);
             }
@@ -1041,6 +1109,5 @@
     }
 
     window.etcl = window.etreecell = etreecell;
-    window.etclCellTyper = window.etreecellCellTyper = window.etclct = cellTyper;
 
 })(window);
